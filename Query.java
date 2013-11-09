@@ -220,10 +220,62 @@ public class Query {
 
     public void transaction_fast_search(int cid, String movie_title)
             throws Exception {
-        /* like transaction_search, but uses joins instead of independent joins
-           Needs to run three SQL queries: (a) movies, (b) movies join directors, (c) movies join actors
-           Answers are sorted by mid.
-           Then merge-joins the three answer sets */
+                    	HashMap<String, StringBuilder> results = new HashMap<String, StringBuilder>();
+    	//sloppy code but it works.
+    	//i'll clean it up a bit and double check it again in the next few days.
+    	//-Andrew
+    	StringBuilder current;
+    	ResultSet qResults = null;
+    	String id;
+    	while( 
+    		(qResults==null?(qResults = this._imdb.createStatement().executeQuery(
+    			"SELECT * " +
+    			"FROM MOVIE " +
+    			"WHERE NAME LIKE '%" + movie_title + "%' " +
+    			"ORDER BY id;"
+    			)):qResults).next()){
+    			current = new StringBuilder();
+    			
+    			id = qResults.getString("id");
+    			current.append("ID : " + id +
+    						   "\nName : " + qResults.getString("name") +
+    						   "\nYear : " + qResults.getString("year") +
+    						   "\n");
+    			results.put(id, current);
+    	} qResults = null;
+    	
+    	while(
+    		(qResults==null?(qResults = this._imdb.createStatement().executeQuery(
+    			"SELECT m.id, d.fname, d.lname " +
+    			"FROM MOVIE m " +
+    			"INNER JOIN MOVIE_DIRECTORS md ON m.id=mid " +
+    			"INNER JOIN DIRECTORS d ON md.did=d.id " +
+    			"WHERE NAME LIKE '%" + movie_title + "%' " +
+    			"ORDER BY m.id;"
+    			)):qResults).next()){
+    		
+    			current = results.get(qResults.getString("id"));
+    			current.append("Director : " + qResults.getString("fname") + 
+    						   ' '		   	 + qResults.getString("lname") +
+    						   "\n");
+    	} qResults = null;
+    	
+    	while(
+    		(qResults==null?(qResults = this._imdb.createStatement().executeQuery(
+    			"SELECT m.id, a.fname, a.lname " +
+    			"FROM MOVIE m " +
+    			"INNER JOIN CASTS c ON m.id=c.mid " +
+    			"INNER JOIN ACTOR a on a.id=c.pid " +
+    			"WHERE NAME LIKE '%" + movie_title + "%' " +
+    			"ORDER BY m.id;"
+    			)):qResults).next()){
+    		current = results.get(qResults.getString("id"));
+    		current.append("Actor : " + qResults.getString("fname") +
+    					   " " 		  + qResults.getString("lname") + 
+    					   "\n");
+    	} qResults = null;
+    	for(StringBuilder sb : results.values())
+    		System.out.println(sb.toString());
     }
 
 }

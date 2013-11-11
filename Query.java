@@ -1,4 +1,5 @@
 import java.util.Properties;
+import java.util.ArrayList;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -29,27 +30,30 @@ public class Query {
     private PreparedStatement _search_statement;
 
     private String _director_mid_sql = "SELECT y.* "
-                     + "FROM movie_directors x, directors y "
-                     + "WHERE x.mid = ? and x.did = y.id";
-					 
-	private String _actor_mid_sql = "SELECT y.* "
-                     + "FROM casts x, actor y "
-                     + "WHERE x.mid = ? and x.pid = y.id";
-					 
-	private String _customer_name_sql = "SELECT lname, fname"
-                     + "FROM  Customers "
-                     + "WHERE cid = ?";
-	private String _remaining_rental_sql = "SELECT r.max_movies - curRental.num "
-                     + "FROM Customers c, RentalPlans r, (Select count(*) AS num from MovieRentals m where m.cid = ? AND m.status='open') curRental  "
-                     + "WHERE c.cid = ? AND c.pid = r.pid";
-	
-	private String _who_has_this_movie_sql = "SELECT c.cid"
-                     + "FROM  Customers c, MovieRentals m"
-                     + "WHERE cid = m.cid AND m.mid = ? AND m.status = 'open'";
-	
-    private String _rental_plans_sql = 
-    		"SELECT *" +
-    		"FROM rentalplan";
+    		+ "FROM movie_directors x, directors y "
+    		+ "WHERE x.mid = ? and x.did = y.id";
+
+    private String _actor_mid_sql = "SELECT y.* "
+    		+ "FROM casts x, actor y "
+    		+ "WHERE x.mid = ? and x.pid = y.id";
+
+    private String _customer_name_sql = "SELECT lname, fname"
+    		+ "FROM  Customers "
+    		+ "WHERE cid = ?";
+    private String _remaining_rental_sql = "SELECT r.max_movies - curRental.num "
+    		+ "FROM Customers c, RentalPlans r, (Select count(*) AS num from MovieRentals m where m.cid = ? AND m.status='open') curRental  "
+    		+ "WHERE c.cid = ? AND c.pid = r.pid";
+
+    private String _who_has_this_movie_sql = "SELECT c.cid"
+    		+ "FROM  Customers c, MovieRentals m"
+    		+ "WHERE cid = m.cid AND m.mid = ? AND m.status = 'open'";
+
+    private String _rental_plans_sql = "SELECT *"
+    		+ "FROM rentalplan";
+
+    private String _update_rental_plan_sql = "UPDATE customer "
+    		+ "SET plan_id = ? "
+    		+ "WHERE cust_id = ?";
 	
     private PreparedStatement _director_mid_statement;
 	private PreparedStatement _actor_mid_statement;
@@ -57,6 +61,8 @@ public class Query {
 	private PreparedStatement _remaining_rental_statement;
 	private PreparedStatement _who_has_this_movie_statement;
     private PreparedStatement _rental_plans_statement;
+    private PreparedStatement _update_rental_plan_statement;
+    
 
     /* uncomment, and edit, after your create your own customer database */
     /*
@@ -115,13 +121,14 @@ public class Query {
 
     public void prepareStatements() throws Exception {
 
-        _search_statement = _imdb.prepareStatement(_search_sql);
-        _director_mid_statement = _imdb.prepareStatement(_director_mid_sql);
-		_actor_mid_statement = _imdb.prepareStatement(_actor_mid_sql);
-		_customer_name_statement = _customer_db.prepareStatement(_customer_name_sql);
-		_remaining_rental_statement = _customer_db.prepareStatement(_remaining_rental_sql);
-		 _who_has_this_movie_statement = _customer_db.prepareStatement( _who_has_this_movie_sql);
-		 _rental_plans_statement = _customer_db.prepareStatement(_rental_plans_sql);
+    	_search_statement = _imdb.prepareStatement(_search_sql);
+    	_director_mid_statement = _imdb.prepareStatement(_director_mid_sql);
+    	_actor_mid_statement = _imdb.prepareStatement(_actor_mid_sql);
+    	_customer_name_statement = _customer_db.prepareStatement(_customer_name_sql);
+    	_remaining_rental_statement = _customer_db.prepareStatement(_remaining_rental_sql);
+    	_who_has_this_movie_statement = _customer_db.prepareStatement( _who_has_this_movie_sql);
+    	_rental_plans_statement = _customer_db.prepareStatement(_rental_plans_sql);
+    	_update_rental_plan_statement = _customer_db.prepareStatement(_update_rental_plan_sql);
         /* uncomment after you create your customers database */
         /*
         _customer_login_statement = _customer_db.prepareStatement(_customer_login_sql);
@@ -160,8 +167,18 @@ public class Query {
 
     public boolean helper_check_plan(int plan_id) throws Exception {
         /* is plan_id a valid plan id ?  you have to figure out */
-    	
-        return true;
+    	ArrayList<Integer> idList = new ArrayList<Integer>;
+    	_rental_plans_statement.clearParameters();
+        ResultSet plan_set = _rental_plans_statement.executeQuery();
+        
+        while(plan_set.next()){
+        	idList.add(plan_set.getInt(1));
+        }
+        
+        if(idList.contains(plan_id)){
+        	return true;
+        }
+        else return false;
     }
 
     public boolean helper_check_movie(int mid) throws Exception {
@@ -264,12 +281,17 @@ public class Query {
 
     public void transaction_choose_plan(int cid, int pid) throws Exception {
         /* updates the customer's plan to pid: UPDATE customers SET plid = pid */
+    	//without enforcing consistency or checking current # of rentals (yet)
+    	_update_rental_plan_statement.clearParameters();
+    	_update_rental_plan_statement.setInt(1,pid);
+    	_update_rental_plan_statement.setInt(2,cid);
+    	_update_rental_plan_statement.executeQuery();
         /* remember to enforce consistency ! */
+    	
     }
 
     public void transaction_list_plans() throws Exception {
         /* println all available plans: SELECT * FROM plan */
-    	System.out.println("List of plans: ");
     	_rental_plans_statement.clearParameters();
         ResultSet plan_set = _rental_plans_statement.executeQuery();
         

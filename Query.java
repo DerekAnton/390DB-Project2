@@ -25,13 +25,33 @@ public class Query {
 
     // Canned queries
 
-    private String _search_sql = "SELECT * FROM movie WHERE name like ? ORDER BY id";
+    private String _search_sql = "SELECT * FROM movie WHERE name COLLATE Latin1_General_CS_AS like ? ORDER BY id";
     private PreparedStatement _search_statement;
 
     private String _director_mid_sql = "SELECT y.* "
                      + "FROM movie_directors x, directors y "
                      + "WHERE x.mid = ? and x.did = y.id";
+					 
+	private String _actor_mid_sql = "SELECT y.* "
+                     + "FROM casts x, actor y "
+                     + "WHERE x.mid = ? and x.pid = y.id";
+					 
+	private String _customer_name_sql = "SELECT lname, fname"
+                     + "FROM  Customers "
+                     + "WHERE cid = ?";
+	private String _remaining_rental_sql = "SELECT r.max_movies - curRental.num "
+                     + "FROM Customers c, RentalPlans r, (Select count(*) AS num from MovieRentals m where m.cid = ? AND m.status='open') curRental  "
+                     + "WHERE c.cid = ? AND c.pid = r.pid";
+	
+	private String _who_has_this_movie_sql = "SELECT c.cid"
+                     + "FROM  Customers c, MovieRentals m"
+                     + "WHERE cid = m.cid AND m.mid = ? AND m.status = 'open'";
+	
     private PreparedStatement _director_mid_statement;
+	private PreparedStatement _actor_mid_statement;
+	private PreparedStatement _customer_name_statement;
+	private PreparedStatement _remaining_rental_statement;
+	private PreparedStatement _who_has_this_movie_statement;
 
     /* uncomment, and edit, after your create your own customer database */
     /*
@@ -92,7 +112,10 @@ public class Query {
 
         _search_statement = _imdb.prepareStatement(_search_sql);
         _director_mid_statement = _imdb.prepareStatement(_director_mid_sql);
-
+		_actor_mid_statement = _imdb.prepareStatement(_actor_mid_sql);
+		_customer_name_statement = _customer_db.prepareStatement(_customer_name_sql);
+		_remaining_rental_statement = _customer_db.prepareStatement(_remaining_rental_sql);
+		 _who_has_this_movie_statement = _customer_db.prepareStatement( _who_has_this_movie_sql);
         /* uncomment after you create your customers database */
         /*
         _customer_login_statement = _customer_db.prepareStatement(_customer_login_sql);
@@ -113,12 +136,19 @@ public class Query {
         /* how many movies can she/he still rent ? */
         /* you have to compute and return the difference between the customer's plan
            and the count of oustanding rentals */
-        return (99);
+		   _remaining_rental_statement.clearParameters();
+		   _remaining_rental_statement.setInt(1,cid);
+		   ResultSet remainingNum = _remaining_rental_statement.executeQuery();
+        return remainingNum.getInt(1);
     }
 
     public String helper_compute_customer_name(int cid) throws Exception {
         /* you find  the first + last name of the current customer */
-        return ("JoeFirstName" + " " + "JoeLastName");
+		_customer_name_statement.clearParameters();
+        _customer_name_statement.setInt(1, cid);
+        ResultSet name_set = _customer_name_statement.executeQuery();
+		String name = name_set.getString(2) + " " + name_set.getString(1);
+		return name;
 
     }
 
@@ -134,7 +164,15 @@ public class Query {
 
     private int helper_who_has_this_movie(int mid) throws Exception {
         /* find the customer id (cid) of whoever currently rents the movie mid; return -1 if none */
-        return (77);
+		 _who_has_this_movie_statement.clearParameters();
+		  _who_has_this_movie_statement.setInt(1,mid);
+		  ResultSet cid =  _who_has_this_movie_statement.executeQuery();
+		  if(cid.next()){
+			return cid.getInt(1);
+		  }
+		  else{
+		  return -1;
+		  }
     }
 
     /**********************************************************/
@@ -191,7 +229,26 @@ public class Query {
             }
             director_set.close();
             /* now you need to retrieve the actors, in the same manner */
+			
+			_actor_mid_statement.clearParameters();
+            _actor_mid_statement.setInt(1, mid);
+            ResultSet actor_set = _actor_mid_statement.executeQuery();
+            while (actor_set.next()) {
+                System.out.println("\t\tActor: " + actor_set.getString(3)
+                        + " " + actor_set.getString(2) + " " + actor_set.getString(4) );
+            }
+            actor_set.close();
             /* then you have to find the status: of "AVAILABLE" "YOU HAVE IT", "UNAVAILABLE" */
+			if(helper_who_has_this_movie(mid) == cid){
+				System.out.println("YOU HAVE IT");
+			}
+			else if((helper_compute_remaining_rentals(cid) == 0) || helper_who_has_this_movie(mid) != -1){
+				System.out.println("UNAVAILABLE");
+			}
+			
+			else if(helper_who_has_this_movie(mid) == -1){
+				System.out.println("AVAILABLE");
+			}
         }
         System.out.println();
     }

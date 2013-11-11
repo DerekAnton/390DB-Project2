@@ -197,6 +197,8 @@ public class Query {
 
     public void transaction_personal_data(int cid) throws Exception {
         /* println the customer's personal data: name, and plan number */
+        System.out.println("Name: " + helper_compute_customer_name(cid));
+        System.out.println("You can rent " + helper_compute_remaining_rentals(cid) + " additional movies");
     }
 
 

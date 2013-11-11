@@ -47,11 +47,16 @@ public class Query {
                      + "FROM  Customers c, MovieRentals m"
                      + "WHERE cid = m.cid AND m.mid = ? AND m.status = 'open'";
 	
+    private String _rental_plans_sql = 
+    		"SELECT *" +
+    		"FROM rentalplan";
+	
     private PreparedStatement _director_mid_statement;
 	private PreparedStatement _actor_mid_statement;
 	private PreparedStatement _customer_name_statement;
 	private PreparedStatement _remaining_rental_statement;
 	private PreparedStatement _who_has_this_movie_statement;
+    private PreparedStatement _rental_plans_statement;
 
     /* uncomment, and edit, after your create your own customer database */
     /*
@@ -116,6 +121,7 @@ public class Query {
 		_customer_name_statement = _customer_db.prepareStatement(_customer_name_sql);
 		_remaining_rental_statement = _customer_db.prepareStatement(_remaining_rental_sql);
 		 _who_has_this_movie_statement = _customer_db.prepareStatement( _who_has_this_movie_sql);
+		 _rental_plans_statement = _customer_db.prepareStatement(_rental_plans_sql);
         /* uncomment after you create your customers database */
         /*
         _customer_login_statement = _customer_db.prepareStatement(_customer_login_sql);
@@ -149,11 +155,12 @@ public class Query {
         ResultSet name_set = _customer_name_statement.executeQuery();
 		String name = name_set.getString(2) + " " + name_set.getString(1);
 		return name;
-
     }
+    
 
     public boolean helper_check_plan(int plan_id) throws Exception {
         /* is plan_id a valid plan id ?  you have to figure out */
+    	
         return true;
     }
 
@@ -262,6 +269,16 @@ public class Query {
 
     public void transaction_list_plans() throws Exception {
         /* println all available plans: SELECT * FROM plan */
+    	System.out.println("List of plans: ");
+    	_rental_plans_statement.clearParameters();
+        ResultSet plan_set = _rental_plans_statement.executeQuery();
+        
+        while(plan_set.next()){
+        	System.out.print("Plan ID: " + plan_set.getInt(1) + ", ");
+        	System.out.print("Name: " + plan_set.getString(2) + ", ");
+        	System.out.print("Max Rentals: " + plan_set.getInt(3) + ", ");
+        	System.out.print("Monthly Fee: " + plan_set.getDouble(4) + "\n");
+        }
     }
     
     public void transaction_list_user_rentals(int cid) throws Exception {

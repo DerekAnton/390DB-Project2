@@ -1,11 +1,11 @@
-import java.util.Properties;
-import java.util.ArrayList;
+import java.io.FileInputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-
-import java.io.FileInputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Properties;
 
 /**
  * Runs queries against a back-end database
@@ -167,7 +167,7 @@ public class Query {
 
     public boolean helper_check_plan(int plan_id) throws Exception {
         /* is plan_id a valid plan id ?  you have to figure out */
-    	ArrayList<Integer> idList = new ArrayList<Integer>;
+	ArrayList<Integer> idList = new ArrayList<Integer>();
     	_rental_plans_statement.clearParameters();
         ResultSet plan_set = _rental_plans_statement.executeQuery();
         

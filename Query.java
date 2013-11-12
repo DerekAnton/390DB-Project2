@@ -26,54 +26,38 @@ public class Query {
     private Connection _customer_db;
 
     // Canned queries
-    private String _search_sql = "SELECT * FROM movie WHERE name COLLATE Latin1_General_CS_AS like ? ORDER BY id";
+    private String _search_sql = "SELECT * FROM movie WHERE name like ? ORDER BY id";
     private PreparedStatement _search_statement;
 
-    private String _director_mid_sql = "SELECT y.* "
-	    + "FROM movie_directors x, directors y "
-	    + "WHERE x.mid = ? and x.did = y.id";
+    private String _director_mid_sql = "SELECT d.* "
+	    + "FROM movie_directors r, directors d "
+	    + "WHERE r.mid = ? AND r.did = d.id";
     private PreparedStatement _director_mid_statement;
 
-    private String _actor_mid_sql = "SELECT y.* " + "FROM casts x, actor y "
-	    + "WHERE x.mid = ? and x.pid = y.id";
+    /* custom statements */
+    private String _actor_mid_sql = "SELECT a.* " + "FROM casts c, actor a "
+	    + "WHERE c.mid = ? and c.pid = a.id";
     private PreparedStatement _actor_mid_statement;
 
-    private String _customer_name_sql = "SELECT lname, fname"
-	    + "FROM  Customers " + "WHERE cid = ?";
+    private String _customer_name_sql = "SELECT lname, fname "
+	    + "FROM  customer " + "WHERE cust_id = ?";
     private PreparedStatement _customer_name_statement;
 
-    private String _remaining_rental_sql = "SELECT r.max_movies - curRental.num "
-	    + "FROM Customers c, RentalPlans r, (Select count(*) AS num from MovieRentals m where m.cid = ? AND m.status='open') curRental  "
-	    + "WHERE c.cid = ? AND c.pid = r.pid";
+    private String _remaining_rental_sql = "SELECT r.maxrentals - curRental.num "
+	    + "FROM customer c, rentalplan r, (SELECT COUNT(*) AS num FROM activerental m WHERE m.cust_id = ?) curRental "
+	    + "WHERE c.cust_id = ? AND c.plan_id = r.plan_id";
     private PreparedStatement _remaining_rental_statement;
 
-    private String _who_has_this_movie_sql = "SELECT c.cid"
-	    + "FROM  customer c, activerental m"
-	    + "WHERE cid = m.cid AND m.mid = ?";
+    private String _who_has_this_movie_sql = "SELECT cust_id "
+	    + "FROM  activerental " + "WHERE movie_id = ?";
     private PreparedStatement _who_has_this_movie_statement;
 
-    private String _rental_plans_sql = "SELECT *" + "FROM rentalplan";
+    private String _rental_plans_sql = "SELECT * " + "FROM rentalplan";
     private PreparedStatement _rental_plans_statement;
 
     private String _update_rental_plan_sql = "UPDATE customer "
 	    + "SET plan_id = ? " + "WHERE cust_id = ?";
     private PreparedStatement _update_rental_plan_statement;
-
-    private String _customer_login_sql = "SELECT * FROM customers WHERE login = ? and password = ?";
-    private PreparedStatement _customer_login_statement;
-
-    private String _begin_transaction_read_write_sql = "BEGIN TRANSACTION READ WRITE";
-    private PreparedStatement _begin_transaction_read_write_statement;
-
-    private String _commit_transaction_sql = "COMMIT TRANSACTION";
-    private PreparedStatement _commit_transaction_statement;
-
-    private String _rollback_transaction_sql = "ROLLBACK TRANSACTION";
-    private PreparedStatement _rollback_transaction_statement;
-
-    /* custom statements */
-    private String _movie_by_id_sql = "SELECT * FROM movie WHERE id = ?";
-    private PreparedStatement _movie_by_id_statement;
 
     private String _rent_mid_to_cid_sql = "INSERT INTO activerental (movie_id, cust_id, dateout) VALUES (?, ?, current_timestamp)";
     private PreparedStatement _rent_mid_to_cid_statement;
@@ -87,6 +71,21 @@ public class Query {
      */
     private String _return_by_mid_sql = "DELETE FROM activerental WHERE movie_id = ?";
     private PreparedStatement _return_by_mid_statement;
+
+    private String _customer_login_sql = "SELECT * FROM customer WHERE login = ? and password = ?";
+    private PreparedStatement _customer_login_statement;
+
+    private String _begin_transaction_read_write_sql = "BEGIN TRANSACTION READ WRITE";
+    private PreparedStatement _begin_transaction_read_write_statement;
+
+    private String _commit_transaction_sql = "COMMIT TRANSACTION";
+    private PreparedStatement _commit_transaction_statement;
+
+    private String _rollback_transaction_sql = "ROLLBACK TRANSACTION";
+    private PreparedStatement _rollback_transaction_statement;
+
+    private String _movie_by_id_sql = "SELECT * FROM movie WHERE id = ?";
+    private PreparedStatement _movie_by_id_statement;
 
     private ArrayList<PreparedStatement> openStatements;
 
@@ -150,6 +149,7 @@ public class Query {
 
 	_search_statement = openStatement(_imdb, _search_sql);
 	_director_mid_statement = openStatement(_imdb, _director_mid_sql);
+	/* custom statements */
 	_actor_mid_statement = openStatement(_imdb, _actor_mid_sql);
 	_customer_name_statement = openStatement(_customer_db,
 		_customer_name_sql);
@@ -160,6 +160,13 @@ public class Query {
 	_rental_plans_statement = openStatement(_customer_db, _rental_plans_sql);
 	_update_rental_plan_statement = openStatement(_customer_db,
 		_update_rental_plan_sql);
+	_movie_by_id_statement = openStatement(_imdb, _movie_by_id_sql);
+	_rent_mid_to_cid_statement = openStatement(_customer_db,
+		_rent_mid_to_cid_sql);
+	_activerentals_by_cid_statement = openStatement(_customer_db,
+		_activerentals_by_cid_sql);
+	_return_by_mid_statement = openStatement(_customer_db,
+		_return_by_mid_sql);
 	_customer_login_statement = openStatement(_customer_db,
 		_customer_login_sql);
 	_begin_transaction_read_write_statement = openStatement(_customer_db,
@@ -168,31 +175,35 @@ public class Query {
 		_commit_transaction_sql);
 	_rollback_transaction_statement = openStatement(_customer_db,
 		_rollback_transaction_sql);
-	/* custom statements */
-	_movie_by_id_statement = openStatement(_imdb, _movie_by_id_sql);
-	_rent_mid_to_cid_statement = openStatement(_customer_db,
-		_rent_mid_to_cid_sql);
-	_activerentals_by_cid_statement = openStatement(_customer_db,
-		_activerentals_by_cid_sql);
-	_return_by_mid_statement = openStatement(_customer_db,
-		_return_by_mid_sql);
     }
 
     /**********************************************************/
     /* suggested helper functions  */
-
+    /**
+     * how many movies can she/he still rent ? you have to compute and return
+     * the difference between the customer's plan and the count of outstanding
+     * rentals
+     * 
+     * @param cid
+     * @return
+     * @throws Exception
+     */
     public int helper_compute_remaining_rentals(int cid) throws Exception {
-	/* how many movies can she/he still rent ? */
-	/* you have to compute and return the difference between the customer's plan
-	   and the count of oustanding rentals */
+
 	_remaining_rental_statement.clearParameters();
 	_remaining_rental_statement.setInt(1, cid);
 	ResultSet remainingNum = _remaining_rental_statement.executeQuery();
 	return remainingNum.getInt(1);
     }
 
+    /**
+     * you find the first + last name of the current customer
+     * 
+     * @param cid
+     * @return
+     * @throws Exception
+     */
     public String helper_compute_customer_name(int cid) throws Exception {
-	/* you find  the first + last name of the current customer */
 	_customer_name_statement.clearParameters();
 	_customer_name_statement.setInt(1, cid);
 	ResultSet name_set = _customer_name_statement.executeQuery();
@@ -200,8 +211,14 @@ public class Query {
 	return name;
     }
 
+    /**
+     * is plan_id a valid plan id ? you have to figure out
+     * 
+     * @param plan_id
+     * @return
+     * @throws Exception
+     */
     public boolean helper_check_plan(int plan_id) throws Exception {
-	/* is plan_id a valid plan id ?  you have to figure out */
 	ArrayList<Integer> idList = new ArrayList<Integer>();
 	_rental_plans_statement.clearParameters();
 	ResultSet plan_set = _rental_plans_statement.executeQuery();
@@ -235,8 +252,15 @@ public class Query {
 	}
     }
 
+    /**
+     * find the customer id (cid) of whoever currently rents the movie mid;
+     * return -1 if none
+     * 
+     * @param mid
+     * @return
+     * @throws Exception
+     */
     private int helper_who_has_this_movie(int mid) throws Exception {
-	/* find the customer id (cid) of whoever currently rents the movie mid; return -1 if none */
 	_who_has_this_movie_statement.clearParameters();
 	_who_has_this_movie_statement.setInt(1, mid);
 	ResultSet cid = _who_has_this_movie_statement.executeQuery();
@@ -248,10 +272,17 @@ public class Query {
     }
 
     /**********************************************************/
-    /* login transaction: invoked only once, when the app is started  */
+    /**
+     * login transaction: invoked only once, when the app is started
+     * authenticates the user, and returns the user id, or -1 if authentication
+     * fails
+     * 
+     * @param name
+     * @param password
+     * @return
+     * @throws Exception
+     */
     public int transaction_login(String name, String password) throws Exception {
-	/* authenticates the user, and returns the user id, or -1 if authentication fails */
-
 	int cid;
 
 	_customer_login_statement.clearParameters();
@@ -263,8 +294,13 @@ public class Query {
 	return(cid);
     }
 
+    /**
+     * println the customer's personal data: name, and plan number
+     * 
+     * @param cid
+     * @throws Exception
+     */
     public void transaction_personal_data(int cid) throws Exception {
-	/* println the customer's personal data: name, and plan number */
 	System.out.println("Name: " + helper_compute_customer_name(cid));
 	System.out.println("You can rent "
 		+ helper_compute_remaining_rentals(cid) + " additional movies");
@@ -273,13 +309,18 @@ public class Query {
     /**********************************************************/
     /* main functions in this project: */
 
+    /**
+     * searches for movies with matching titles: SELECT * FROM movie WHERE name
+     * LIKE movie_title prints the movies, directors, actors, and the
+     * availability status: AVAILABLE, or UNAVAILABLE, or YOU CURRENTLY RENT IT
+     * set the first (and single) '?' parameter
+     * 
+     * @param cid
+     * @param movie_title
+     * @throws Exception
+     */
     public void transaction_search(int cid, String movie_title)
 	    throws Exception {
-	/* searches for movies with matching titles: SELECT * FROM movie WHERE name LIKE movie_title */
-	/* prints the movies, directors, actors, and the availability status:
-	   AVAILABLE, or UNAVAILABLE, or YOU CURRENTLY RENT IT */
-
-	/* set the first (and single) '?' parameter */
 	_search_statement.clearParameters();
 	_search_statement.setString(1, '%' + movie_title + '%');
 
@@ -325,19 +366,28 @@ public class Query {
 	System.out.println();
     }
 
+    /**
+     * updates the customer's plan to pid: UPDATE customers SET plid = pid
+     * without enforcing consistency or checking current # of rentals (yet)
+     * 
+     * @param cid
+     * @param pid
+     * @throws Exception
+     */
     public void transaction_choose_plan(int cid, int pid) throws Exception {
-	/* updates the customer's plan to pid: UPDATE customers SET plid = pid */
-	// without enforcing consistency or checking current # of rentals (yet)
 	_update_rental_plan_statement.clearParameters();
 	_update_rental_plan_statement.setInt(1, pid);
 	_update_rental_plan_statement.setInt(2, cid);
 	_update_rental_plan_statement.executeQuery();
 	/* remember to enforce consistency ! */
-
     }
 
+    /**
+     * println all available plans: SELECT * FROM plan
+     * 
+     * @throws Exception
+     */
     public void transaction_list_plans() throws Exception {
-	/* println all available plans: SELECT * FROM plan */
 	_rental_plans_statement.clearParameters();
 	ResultSet plan_set = _rental_plans_statement.executeQuery();
 
@@ -443,6 +493,16 @@ public class Query {
 	}
     }
 
+    /**
+     * like transaction_search, but uses joins instead of independent joins
+     * Needs to run three SQL queries: (a) movies, (b) movies join directors,
+     * (c) movies join actors Answers are sorted by mid. Then merge-joins the
+     * three answer sets
+     * 
+     * @param cid
+     * @param movie_title
+     * @throws Exception
+     */
     public void transaction_fast_search(int cid, String movie_title)
 	    throws Exception {
 	HashMap<String, StringBuilder> results = new HashMap<String, StringBuilder>();

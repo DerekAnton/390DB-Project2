@@ -252,8 +252,6 @@ public class Query {
     public int transaction_login(String name, String password) throws Exception {
 	/* authenticates the user, and returns the user id, or -1 if authentication fails */
 
-	/* Uncomment after you create your own customers database */
-	/*
 	int cid;
 
 	_customer_login_statement.clearParameters();
@@ -263,8 +261,6 @@ public class Query {
 	if (cid_set.next()) cid = cid_set.getInt(1);
 	else cid = -1;
 	return(cid);
-	 */
-	return (55);
     }
 
     public void transaction_personal_data(int cid) throws Exception {

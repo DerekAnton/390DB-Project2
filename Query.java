@@ -54,6 +54,9 @@ public class Query {
 
     private String _rental_plans_sql = "SELECT * " + "FROM rentalplan";
     private PreparedStatement _rental_plans_statement;
+    
+    private String _rentals_for_plan_sql = "SELECT maxrentals FROM rentalplan WHERE plan_id = ?";
+    private PreparedStatement _rentals_for_plan_statement;
 
     private String _update_rental_plan_sql = "UPDATE customer "
 	    + "SET plan_id = ? " + "WHERE cust_id = ?";
@@ -64,6 +67,9 @@ public class Query {
 
     private String _activerentals_by_cid_sql = "SELECT * FROM activerental WHERE cust_id = ?";
     private PreparedStatement _activerentals_by_cid_statement;
+    
+    private String _activerentals_count_sql = "SELECT count(*) FROM activerental WHERE cust_id = ?";
+    private PreparedStatement _activerentals_count_statement;
 
     /**
      * don't need cid when mid is unique, triggers move deleted to historical
@@ -158,6 +164,7 @@ public class Query {
 	_who_has_this_movie_statement = openStatement(_customer_db,
 		_who_has_this_movie_sql);
 	_rental_plans_statement = openStatement(_customer_db, _rental_plans_sql);
+	_rentals_for_plan_statement = openStatement(_customer_db, _rentals_for_plan_sql);
 	_update_rental_plan_statement = openStatement(_customer_db,
 		_update_rental_plan_sql);
 	_movie_by_id_statement = openStatement(_imdb, _movie_by_id_sql);
@@ -165,6 +172,8 @@ public class Query {
 		_rent_mid_to_cid_sql);
 	_activerentals_by_cid_statement = openStatement(_customer_db,
 		_activerentals_by_cid_sql);
+	_activerentals_count_statement = openStatement(_customer_db,
+			_activerentals_count_sql);
 	_return_by_mid_statement = openStatement(_customer_db,
 		_return_by_mid_sql);
 	_customer_login_statement = openStatement(_customer_db,
@@ -368,17 +377,36 @@ public class Query {
 
     /**
      * updates the customer's plan to pid: UPDATE customers SET plid = pid
-     * without enforcing consistency or checking current # of rentals (yet)
      * 
      * @param cid
      * @param pid
      * @throws Exception
      */
     public void transaction_choose_plan(int cid, int pid) throws Exception {
+    	//retrieve the number of active rentals for that user
+    	_activerentals_count_statement.clearParameters();
+    	_activerentals_count_statement.setInt(1, cid);
+    	ResultSet count_set = _activerentals_count_statement.executeQuery();
+    	int activeRentals = count_set.getInt(1);
+    	
+    	//retrieve max allowed rentals for indicated plan
+    	_rentals_for_plan_statement.clearParameters();
+    	_rentals_for_plan_statement.setInt(1, pid);
+    	ResultSet maxRental_set = _rentals_for_plan_statement.executeQuery();
+    	int maxRentals = maxRental_set.getInt(1);
+    	
+    	//compare active rentals with allowed rentals
+    if(activeRentals <= maxRentals){
 	_update_rental_plan_statement.clearParameters();
 	_update_rental_plan_statement.setInt(1, pid);
 	_update_rental_plan_statement.setInt(2, cid);
 	_update_rental_plan_statement.executeQuery();
+    }
+    else{
+    	System.out.println("Plan not changed! You have " + activeRentals + " active rentals. " +
+    			"The new plan allows for " + maxRentals + " active rentals. " +
+    					"Please return some rentals first.");
+    }
 	/* remember to enforce consistency ! */
     }
 

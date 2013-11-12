@@ -78,7 +78,7 @@ public class Query {
     private String _return_by_mid_sql = "DELETE FROM activerental WHERE movie_id = ?";
     private PreparedStatement _return_by_mid_statement;
 
-    private String _customer_login_sql = "SELECT * FROM customer WHERE login = ? and password = ?";
+    private String _customer_login_sql = "SELECT * FROM customer WHERE username = ? and password = ?";
     private PreparedStatement _customer_login_statement;
 
     private String _begin_transaction_read_write_sql = "BEGIN TRANSACTION READ WRITE";
@@ -544,52 +544,59 @@ public class Query {
     public void transaction_fast_search(int cid, String movie_title)
 	    throws Exception {
 	HashMap<String, StringBuilder> results = new HashMap<String, StringBuilder>();
-	// sloppy code but it works.
-	// i'll clean it up a bit and double check it again in the next few
-	// days.
-	// -Andrew
+	//cid is not required as a parameter.
+	//fast search is not required to return rental status
 	StringBuilder current;
 	ResultSet qResults = null;
 	String id;
 	while ((qResults == null ? (qResults = this._imdb.createStatement()
 		.executeQuery(
-			"SELECT * " + "FROM MOVIE " + "WHERE NAME LIKE '%"
-				+ movie_title + "%' " + "ORDER BY id;"))
+			"SELECT * " + 
+			"FROM MOVIE " + 
+			"WHERE NAME LIKE '%" + movie_title + "%' " + 
+			"ORDER BY id;"))
 		: qResults).next()) {
 	    current = new StringBuilder();
 
 	    id = qResults.getString("id");
-	    current.append("ID : " + id + "\nName : "
-		    + qResults.getString("name") + "\nYear : "
-		    + qResults.getString("year") + "\n");
+	    current.append(
+	    	"ID : " + id + 
+	    	"\nName : " + qResults.getString("name") + 
+	    	"\nYear : " + qResults.getString("year") + "\n");
 	    results.put(id, current);
 	}
 	qResults = null;
 
 	while ((qResults == null ? (qResults = this._imdb.createStatement()
 		.executeQuery(
-			"SELECT m.id, d.fname, d.lname " + "FROM MOVIE m "
-				+ "INNER JOIN MOVIE_DIRECTORS md ON m.id=mid "
-				+ "INNER JOIN DIRECTORS d ON md.did=d.id "
-				+ "WHERE NAME LIKE '%" + movie_title + "%' "
-				+ "ORDER BY m.id;")) : qResults).next()) {
+			"SELECT m.id, d.fname, d.lname " + 
+			"FROM MOVIE m " +
+			"INNER JOIN MOVIE_DIRECTORS md ON m.id=mid " +
+			"INNER JOIN DIRECTORS d ON md.did=d.id " +
+			"WHERE NAME LIKE '%" + movie_title + "%' " +
+			"ORDER BY m.id;"))
+		: qResults).next()) {
 
 	    current = results.get(qResults.getString("id"));
-	    current.append("Director : " + qResults.getString("fname") + ' '
-		    + qResults.getString("lname") + "\n");
+	    current.append(
+	    	"Director : " + qResults.getString("fname") + ' '
+		    	      + qResults.getString("lname") + "\n");
 	}
 	qResults = null;
 
 	while ((qResults == null ? (qResults = this._imdb.createStatement()
 		.executeQuery(
-			"SELECT m.id, a.fname, a.lname " + "FROM MOVIE m "
-				+ "INNER JOIN CASTS c ON m.id=c.mid "
-				+ "INNER JOIN ACTOR a on a.id=c.pid "
-				+ "WHERE NAME LIKE '%" + movie_title + "%' "
-				+ "ORDER BY m.id;")) : qResults).next()) {
+			"SELECT m.id, a.fname, a.lname " + 
+			"FROM MOVIE m " +
+			"INNER JOIN CASTS c ON m.id=c.mid " +
+			"INNER JOIN ACTOR a on a.id=c.pid " +
+			"WHERE NAME LIKE '%" + movie_title + "%' " +
+			"ORDER BY m.id;")) 
+		: qResults).next()) {
 	    current = results.get(qResults.getString("id"));
-	    current.append("Actor : " + qResults.getString("fname") + " "
-		    + qResults.getString("lname") + "\n");
+	    current.append(
+	    	"Actor : " + qResults.getString("fname") + " "
+		    	   + qResults.getString("lname") + "\n");
 	}
 	qResults = null;
 	for (StringBuilder sb : results.values())

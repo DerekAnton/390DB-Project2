@@ -3,6 +3,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Properties;
@@ -25,42 +26,39 @@ public class Query {
     private Connection _customer_db;
 
     // Canned queries
-
     private String _search_sql = "SELECT * FROM movie WHERE name COLLATE Latin1_General_CS_AS like ? ORDER BY id";
     private PreparedStatement _search_statement;
 
     private String _director_mid_sql = "SELECT y.* "
 	    + "FROM movie_directors x, directors y "
 	    + "WHERE x.mid = ? and x.did = y.id";
+    private PreparedStatement _director_mid_statement;
 
     private String _actor_mid_sql = "SELECT y.* " + "FROM casts x, actor y "
 	    + "WHERE x.mid = ? and x.pid = y.id";
+    private PreparedStatement _actor_mid_statement;
 
     private String _customer_name_sql = "SELECT lname, fname"
 	    + "FROM  Customers " + "WHERE cid = ?";
+    private PreparedStatement _customer_name_statement;
+
     private String _remaining_rental_sql = "SELECT r.max_movies - curRental.num "
 	    + "FROM Customers c, RentalPlans r, (Select count(*) AS num from MovieRentals m where m.cid = ? AND m.status='open') curRental  "
 	    + "WHERE c.cid = ? AND c.pid = r.pid";
+    private PreparedStatement _remaining_rental_statement;
 
     private String _who_has_this_movie_sql = "SELECT c.cid"
-	    + "FROM  Customers c, MovieRentals m"
-	    + "WHERE cid = m.cid AND m.mid = ? AND m.status = 'open'";
+	    + "FROM  customer c, activerental m"
+	    + "WHERE cid = m.cid AND m.mid = ?";
+    private PreparedStatement _who_has_this_movie_statement;
 
     private String _rental_plans_sql = "SELECT *" + "FROM rentalplan";
+    private PreparedStatement _rental_plans_statement;
 
     private String _update_rental_plan_sql = "UPDATE customer "
 	    + "SET plan_id = ? " + "WHERE cust_id = ?";
-
-    private PreparedStatement _director_mid_statement;
-    private PreparedStatement _actor_mid_statement;
-    private PreparedStatement _customer_name_statement;
-    private PreparedStatement _remaining_rental_statement;
-    private PreparedStatement _who_has_this_movie_statement;
-    private PreparedStatement _rental_plans_statement;
     private PreparedStatement _update_rental_plan_statement;
 
-    /* uncomment, and edit, after your create your own customer database */
-    /*
     private String _customer_login_sql = "SELECT * FROM customers WHERE login = ? and password = ?";
     private PreparedStatement _customer_login_statement;
 
@@ -72,9 +70,28 @@ public class Query {
 
     private String _rollback_transaction_sql = "ROLLBACK TRANSACTION";
     private PreparedStatement _rollback_transaction_statement;
+
+    /* custom statements */
+    private String _movie_by_id_sql = "SELECT * FROM Movie WHERE id = ?";
+    private PreparedStatement _movie_by_id_statement;
+
+    private String _rent_mid_to_cid_sql = "INSERT INTO activerental VALUES (?, ?, current_timestamp)";
+    private PreparedStatement _rent_mid_to_cid_statement;
+
+    private String _activerentals_by_cid_sql = "SELECT * FROM activerental WHERE cust_id = ?";
+    private PreparedStatement _activerentals_by_cid_statement;
+
+    /**
+     * don't need cid when mid is unique, triggers move deleted to historical
+     * inactiverental table
      */
+    private String _return_by_mid_sql = "DELETE FROM activerental WHERE cust_id = ?";
+    private PreparedStatement _return_by_mid_statement;
+
+    private ArrayList<PreparedStatement> openStatements;
 
     public Query() {
+	openStatements = new ArrayList<PreparedStatement>(10);
     }
 
     /**********************************************************/
@@ -103,40 +120,62 @@ public class Query {
     }
 
     public void closeConnection() throws Exception {
+	for (PreparedStatement stm : openStatements) {
+	    stm.close();
+	}
 	_imdb.close();
 	_customer_db.close();
     }
 
     /**********************************************************/
-    /* prepare all the SQL statements in this method.
-      "preparing" a statement is almost like compiling it.  Note
-       that the parameters (with ?) are still not filled in */
+    /**
+     * keep track of opens statements so we can close them before closing
+     * connection
+     * 
+     * @throws SQLException
+     */
+    private PreparedStatement openStatement(Connection conn, String sql)
+	    throws SQLException {
+	PreparedStatement stm = conn.prepareStatement(sql);
+	openStatements.add(stm);
+	return stm;
+    }
 
+    /**
+     * prepare all the SQL statements in this method. "preparing" a statement is
+     * almost like compiling it. Note that the parameters (with ?) are still not
+     * filled in
+     */
     public void prepareStatements() throws Exception {
 
-	_search_statement = _imdb.prepareStatement(_search_sql);
-	_director_mid_statement = _imdb.prepareStatement(_director_mid_sql);
-	_actor_mid_statement = _imdb.prepareStatement(_actor_mid_sql);
-	_customer_name_statement = _customer_db
-		.prepareStatement(_customer_name_sql);
-	_remaining_rental_statement = _customer_db
-		.prepareStatement(_remaining_rental_sql);
-	_who_has_this_movie_statement = _customer_db
-		.prepareStatement(_who_has_this_movie_sql);
-	_rental_plans_statement = _customer_db
-		.prepareStatement(_rental_plans_sql);
-	_update_rental_plan_statement = _customer_db
-		.prepareStatement(_update_rental_plan_sql);
-	/* uncomment after you create your customers database */
-	/*
-	_customer_login_statement = _customer_db.prepareStatement(_customer_login_sql);
-	_begin_transaction_read_write_statement = _customer_db.prepareStatement(_begin_transaction_read_write_sql);
-	_commit_transaction_statement = _customer_db.prepareStatement(_commit_transaction_sql);
-	_rollback_transaction_statement = _customer_db.prepareStatement(_rollback_transaction_sql);
-	 */
-
-	/* add here more prepare statements for all the other queries you need */
-	/* . . . . . . */
+	_search_statement = openStatement(_imdb, _search_sql);
+	_director_mid_statement = openStatement(_imdb, _director_mid_sql);
+	_actor_mid_statement = openStatement(_imdb, _actor_mid_sql);
+	_customer_name_statement = openStatement(_customer_db,
+		_customer_name_sql);
+	_remaining_rental_statement = openStatement(_customer_db,
+		_remaining_rental_sql);
+	_who_has_this_movie_statement = openStatement(_customer_db,
+		_who_has_this_movie_sql);
+	_rental_plans_statement = openStatement(_customer_db, _rental_plans_sql);
+	_update_rental_plan_statement = openStatement(_customer_db,
+		_update_rental_plan_sql);
+	_customer_login_statement = openStatement(_customer_db,
+		_customer_login_sql);
+	_begin_transaction_read_write_statement = openStatement(_customer_db,
+		_begin_transaction_read_write_sql);
+	_commit_transaction_statement = openStatement(_customer_db,
+		_commit_transaction_sql);
+	_rollback_transaction_statement = openStatement(_customer_db,
+		_rollback_transaction_sql);
+	/* custom statements */
+	_movie_by_id_statement = openStatement(_imdb, _movie_by_id_sql);
+	_rent_mid_to_cid_statement = openStatement(_customer_db,
+		_rent_mid_to_cid_sql);
+	_activerentals_by_cid_statement = openStatement(_customer_db,
+		_activerentals_by_cid_sql);
+	_return_by_mid_statement = openStatement(_customer_db,
+		_return_by_mid_sql);
     }
 
     /**********************************************************/
@@ -177,9 +216,23 @@ public class Query {
 	    return false;
     }
 
+    /**
+     * is mid a valid movie id ? you have to figure out
+     * 
+     * @param mid
+     * @return
+     * @throws Exception
+     */
     public boolean helper_check_movie(int mid) throws Exception {
-	/* is mid a valid movie id ? you have to figure out  */
-	return true;
+	ResultSet movie = null;
+	try {
+	    _movie_by_id_statement.clearParameters();
+	    _movie_by_id_statement.setInt(1, mid);
+	    movie = _movie_by_id_statement.executeQuery();
+	    return movie.next();
+	} finally {
+	    movie.close();
+	}
     }
 
     private int helper_who_has_this_movie(int mid) throws Exception {
@@ -300,17 +353,98 @@ public class Query {
 	}
     }
 
+    /**
+     * println all movies rented by the current user
+     * 
+     * @param cid
+     * @throws Exception
+     */
     public void transaction_list_user_rentals(int cid) throws Exception {
-	/* println all movies rented by the current user*/
+	ResultSet mids = null;
+	ResultSet names = null;
+	StringBuilder sb = new StringBuilder();
+	sb.append("Your rentals:\n");
+	try {
+	    _activerentals_by_cid_statement.clearParameters();
+	    _activerentals_by_cid_statement.setInt(1, cid);
+	    mids = _activerentals_by_cid_statement.executeQuery();
+	    while (mids.next()) {
+		_movie_by_id_statement.clearParameters();
+		// rental_id serial, movie_id integer, cust_id integer, dateout
+		// timestamp
+		_movie_by_id_statement.setInt(1, mids.getInt(2));
+		names = _movie_by_id_statement.executeQuery();
+		// id integer, name text, year integer
+		if (names.next()) {
+		    sb.append(names.getString(2) + "\n");
+		} else {
+		    sb.append("Unknown\n"); // imdb movie somehow disappeared
+		}
+	    }
+	} finally {
+	    mids.close();
+	    names.close();
+	}
+	if (sb.length() <= 1) {
+	    sb.append("None\n");
+	}
+	System.out.println(sb);
     }
 
+    /**
+     * rent the movie mid to the customer cid remember to enforce consistency !
+     * 
+     * @param cid
+     * @param mid
+     * @throws Exception
+     */
     public void transaction_rent(int cid, int mid) throws Exception {
-	/* rend the movie mid to the customer cid */
-	/* remember to enforce consistency ! */
+	if (helper_check_movie(mid)) {
+	    _begin_transaction_read_write_statement.executeUpdate();
+	    if (helper_compute_remaining_rentals(cid) <= 0) {
+		_rollback_transaction_statement.executeUpdate();
+		System.err.println("Rental limit already reached.");
+	    } else if (helper_who_has_this_movie(mid) != -1) { // store only has
+							       // one copy
+		_rollback_transaction_statement.executeUpdate();
+		System.err.println("Movie out of stock");
+	    } else {
+		_rent_mid_to_cid_statement.clearParameters();
+		_rent_mid_to_cid_statement.setInt(1, cid);
+		_rent_mid_to_cid_statement.setInt(2, mid);
+		_rent_mid_to_cid_statement.executeUpdate();
+		_commit_transaction_statement.executeUpdate();
+	    }
+	} else {
+	    System.err.println("Invalid movie ID.");
+	}
     }
 
+    /**
+     * return the movie mid by the customer cid
+     * 
+     * @param cid
+     * @param mid
+     * @throws Exception
+     */
     public void transaction_return(int cid, int mid) throws Exception {
-	/* return the movie mid by the customer cid */
+	if (helper_check_movie(mid)) {
+	    _begin_transaction_read_write_statement.executeUpdate();
+	    // store only has one copy, don't let other users return movies for
+	    // others
+	    if (helper_who_has_this_movie(mid) != cid) {
+		_rollback_transaction_statement.executeUpdate();
+		System.err
+			.println("Can only return movies you have checked out.");
+	    } else {
+		_return_by_mid_statement.clearParameters();
+		_return_by_mid_statement.setInt(1, mid);
+		_return_by_mid_statement.executeUpdate();
+		_commit_transaction_statement.executeUpdate();
+	    }
+	} else {
+	    System.err.println("Invalid movie ID.");
+	}
     }
 
     public void transaction_fast_search(int cid, String movie_title)

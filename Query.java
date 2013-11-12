@@ -72,10 +72,10 @@ public class Query {
     private PreparedStatement _rollback_transaction_statement;
 
     /* custom statements */
-    private String _movie_by_id_sql = "SELECT * FROM Movie WHERE id = ?";
+    private String _movie_by_id_sql = "SELECT * FROM movie WHERE id = ?";
     private PreparedStatement _movie_by_id_statement;
 
-    private String _rent_mid_to_cid_sql = "INSERT INTO activerental VALUES (?, ?, current_timestamp)";
+    private String _rent_mid_to_cid_sql = "INSERT INTO activerental (movie_id, cust_id, dateout) VALUES (?, ?, current_timestamp)";
     private PreparedStatement _rent_mid_to_cid_statement;
 
     private String _activerentals_by_cid_sql = "SELECT * FROM activerental WHERE cust_id = ?";
@@ -85,7 +85,7 @@ public class Query {
      * don't need cid when mid is unique, triggers move deleted to historical
      * inactiverental table
      */
-    private String _return_by_mid_sql = "DELETE FROM activerental WHERE cust_id = ?";
+    private String _return_by_mid_sql = "DELETE FROM activerental WHERE movie_id = ?";
     private PreparedStatement _return_by_mid_statement;
 
     private ArrayList<PreparedStatement> openStatements;
@@ -406,8 +406,8 @@ public class Query {
 		System.err.println("Movie out of stock");
 	    } else {
 		_rent_mid_to_cid_statement.clearParameters();
-		_rent_mid_to_cid_statement.setInt(1, cid);
-		_rent_mid_to_cid_statement.setInt(2, mid);
+		_rent_mid_to_cid_statement.setInt(1, mid);
+		_rent_mid_to_cid_statement.setInt(2, cid);
 		_rent_mid_to_cid_statement.executeUpdate();
 		_commit_transaction_statement.executeUpdate();
 	    }

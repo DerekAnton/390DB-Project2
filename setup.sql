@@ -167,4 +167,4 @@ VALUES    (1, 2, current_timestamp - interval '2 day'),
     (3, 4, current_timestamp - interval '4 day');
 
 DELETE FROM activerental
-WHERE cust_id in (3,4);;
+WHERE cust_id = 4;

@@ -489,14 +489,17 @@ public class Query {
 				names = _movie_by_id_statement.executeQuery();
 				// id integer, name text, year integer
 				if (names.next()) {
-					sb.append(names.getString(2) + "\n");
+					sb.append(String.format("ID : %s\nName : %s\n",
+							names.getString(1),
+							names.getString(2)));
 				} else {
 					sb.append("Unknown\n"); // imdb movie somehow disappeared
 				}
 			}
 		} finally {
 			mids.close();
-			names.close();
+			if (names != null)
+				names.close();
 		}
 		if (sb.length() <= 1) {
 			sb.append("None\n");

@@ -26,7 +26,7 @@ public class Query {
 	private Connection _customer_db;
 
 	// Canned queries
-	private String _search_sql = "SELECT * FROM movie WHERE name LIKE ? ORDER BY id";
+	private String _search_sql = "SELECT * FROM movie WHERE name ILIKE ? ORDER BY id";
 	private PreparedStatement _search_statement;
 
 	private String _director_mid_sql = "SELECT d.* "
@@ -79,11 +79,11 @@ public class Query {
 	private PreparedStatement _return_by_mid_statement;
 
 	private String _movie_join_dir_sql = "SELECT m.id, d.fname, d.lname FROM movie m INNER JOIN movie_directors md "
-			+ "ON m.id=md.mid INNER JOIN directors d ON md.did=d.id WHERE name LIKE ? ORDER BY m.id";
+			+ "ON m.id=md.mid INNER JOIN directors d ON md.did=d.id WHERE name ILIKE ? ORDER BY m.id";
 	private PreparedStatement _movie_join_dir_statement;
 
 	private String _movie_join_actor_sql = "SELECT m.id, a.fname, a.lname FROM movie m INNER JOIN casts c "
-			+ "ON m.id=c.mid INNER JOIN actor a on a.id=c.pid WHERE name LIKE ? ORDER BY m.id";
+			+ "ON m.id=c.mid INNER JOIN actor a on a.id=c.pid WHERE name ILIKE ? ORDER BY m.id";
 	private PreparedStatement _movie_join_actor_statement;
 
 	private String _customer_login_sql = "SELECT * FROM customer WHERE username = ? and password = ?";
@@ -351,17 +351,19 @@ public class Query {
 		ResultSet movie_set = null;
 		StringBuilder sb = new StringBuilder();
 		try {
-			movie_set = _search_statement.executeQuery();		
+			movie_set = _search_statement.executeQuery();
+			boolean empty = true;
 			while (movie_set.next()) {
+				empty = false;
 				int mid = movie_set.getInt(1);
-				sb.append(String.format("ID: %d NAME: %s YEAR: %s\n", mid,
+				sb.append(String.format("ID: %d\nName: %s\nYear: %s\n", mid,
 						movie_set.getString(2), movie_set.getString(3)));
 				/* do a dependent join with directors */
 				_director_mid_statement.clearParameters();
 				_director_mid_statement.setInt(1, mid);
 				ResultSet director_set = _director_mid_statement.executeQuery();
 				while (director_set.next()) {
-					sb.append(String.format("\t\tDirector: %s %s",
+					sb.append(String.format("Director: %s %s\n",
 							director_set.getString(3),
 							director_set.getString(2)));
 				}
@@ -371,7 +373,7 @@ public class Query {
 				_actor_mid_statement.setInt(1, mid);
 				ResultSet actor_set = _actor_mid_statement.executeQuery();
 				while (actor_set.next()) {
-					sb.append(String.format("\t\tActor: %s %s %s\n",
+					sb.append(String.format("Actor: %s %s %s\n",
 							actor_set.getString(3), actor_set.getString(2),
 							actor_set.getString(4)));
 				}
@@ -389,6 +391,9 @@ public class Query {
 				} else if (has == -1) {
 					sb.append("AVAILABLE\n");
 				}
+			}
+			if (empty) {
+				sb.append("Not found.");
 			}
 		} finally {
 			movie_set.close();
@@ -575,19 +580,27 @@ public class Query {
 		String id;
 		_search_statement.clearParameters();
 		_search_statement.setString(1, "%" + movie_title + "%");
+		boolean empty = true;
 		while ((qResults == null ? (qResults = _search_statement
 				.executeQuery()) : qResults).next()) {
+			empty = false;
 			current = new StringBuilder();
 			id = qResults.getString("id");
 			current.append(String.format("ID : %s\nName : %s\nYear : %s\n", id,
 					qResults.getString("name"), qResults.getString("year")));
 			results.put(id, current);
 		}
-
+		try {
+			if (empty) {
+				System.out.println("Not found.");
+				return;
+			}
+		} finally {
+			qResults.close();
+			qResults = null;
+		}
 		_movie_join_dir_statement.clearParameters();
 		_movie_join_dir_statement.setString(1, "%" + movie_title + "%");
-		qResults.close();
-		qResults = null;
 		while ((qResults == null ? (qResults = _movie_join_dir_statement
 				.executeQuery()) : qResults).next()) {
 			current = results.get(qResults.getString("id"));
@@ -607,6 +620,21 @@ public class Query {
 		}
 		qResults.close();
 		qResults = null;
+		for (String mid : results.keySet()) {
+			/*
+			 * then you have to find the status: of "AVAILABLE"
+			 * "YOU HAVE IT", "UNAVAILABLE"
+			 */
+			int has = helper_who_has_this_movie(Integer.parseInt(mid));
+			if (has == cid) {
+				results.get(mid).append("YOU HAVE IT\n");
+			} else if (helper_compute_remaining_rentals(cid) == 0
+					|| has != -1) {
+				results.get(mid).append("UNAVAILABLE\n");
+			} else if (has == -1) {
+				results.get(mid).append("AVAILABLE\n");
+			}
+		}
 		for (StringBuilder sb : results.values())
 			System.out.println(sb.toString());
 	}

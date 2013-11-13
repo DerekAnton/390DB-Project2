@@ -1,3 +1,4 @@
+/* Group E CS390DB Fall 2013 */
 import java.io.FileInputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -144,7 +145,7 @@ public class Query {
 	/**
 	 * keep track of opens statements so we can close them before closing
 	 * connection
-	 * 
+	 *
 	 * @throws SQLException
 	 */
 	private PreparedStatement openStatement(Connection conn, String sql)
@@ -204,7 +205,7 @@ public class Query {
 	 * how many movies can she/he still rent ? you have to compute and return
 	 * the difference between the customer's plan and the count of outstanding
 	 * rentals
-	 * 
+	 *
 	 * @param cid
 	 * @return
 	 * @throws Exception
@@ -223,7 +224,7 @@ public class Query {
 
 	/**
 	 * you find the first + last name of the current customer
-	 * 
+	 *
 	 * @param cid
 	 * @return
 	 * @throws Exception
@@ -239,7 +240,7 @@ public class Query {
 
 	/**
 	 * is plan_id a valid plan id ? you have to figure out
-	 * 
+	 *
 	 * @param plan_id
 	 * @return
 	 * @throws Exception
@@ -258,7 +259,7 @@ public class Query {
 
 	/**
 	 * is mid a valid movie id ? you have to figure out
-	 * 
+	 *
 	 * @param mid
 	 * @return
 	 * @throws Exception
@@ -278,7 +279,7 @@ public class Query {
 	/**
 	 * find the customer id (cid) of whoever currently rents the movie mid;
 	 * return -1 if none
-	 * 
+	 *
 	 * @param mid
 	 * @return
 	 * @throws Exception
@@ -299,7 +300,7 @@ public class Query {
 	 * login transaction: invoked only once, when the app is started
 	 * authenticates the user, and returns the user id, or -1 if authentication
 	 * fails
-	 * 
+	 *
 	 * @param name
 	 * @param password
 	 * @return
@@ -321,7 +322,7 @@ public class Query {
 
 	/**
 	 * println the customer's personal data: name, and plan number
-	 * 
+	 *
 	 * @param cid
 	 * @throws Exception
 	 */
@@ -339,7 +340,7 @@ public class Query {
 	 * LIKE movie_title prints the movies, directors, actors, and the
 	 * availability status: AVAILABLE, or UNAVAILABLE, or YOU CURRENTLY RENT IT
 	 * set the first (and single) '?' parameter
-	 * 
+	 *
 	 * @param cid
 	 * @param movie_title
 	 * @throws Exception
@@ -404,7 +405,7 @@ public class Query {
 	/**
 	 * updates the customer's plan to pid: UPDATE customers SET plid = pid
 	 * remember to enforce consistency
-	 * 
+	 *
 	 * @param cid
 	 * @param pid
 	 * @throws Exception
@@ -451,7 +452,7 @@ public class Query {
 
 	/**
 	 * println all available plans: SELECT * FROM plan
-	 * 
+	 *
 	 * @throws Exception
 	 */
 	public void transaction_list_plans() throws Exception {
@@ -468,7 +469,7 @@ public class Query {
 
 	/**
 	 * println all movies rented by the current user
-	 * 
+	 *
 	 * @param cid
 	 * @throws Exception
 	 */
@@ -509,7 +510,7 @@ public class Query {
 
 	/**
 	 * rent the movie mid to the customer cid remember to enforce consistency !
-	 * 
+	 *
 	 * @param cid
 	 * @param mid
 	 * @throws Exception
@@ -538,7 +539,7 @@ public class Query {
 
 	/**
 	 * return the movie mid by the customer cid
-	 * 
+	 *
 	 * @param cid
 	 * @param mid
 	 * @throws Exception
@@ -568,7 +569,7 @@ public class Query {
 	 * Needs to run three SQL queries: (a) movies, (b) movies join directors,
 	 * (c) movies join actors Answers are sorted by mid. Then merge-joins the
 	 * three answer sets
-	 * 
+	 *
 	 * @param cid
 	 * @param movie_title
 	 * @throws Exception

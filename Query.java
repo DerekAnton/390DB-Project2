@@ -388,16 +388,19 @@ public class Query {
      * @throws Exception
      */
     public void transaction_choose_plan(int cid, int pid) throws Exception {
+    	_begin_transaction_read_write_statement.executeUpdate();
     	//retrieve the number of active rentals for that user
     	_activerentals_count_statement.clearParameters();
     	_activerentals_count_statement.setInt(1, cid);
     	ResultSet count_set = _activerentals_count_statement.executeQuery();
+    	count_set.next();
     	int activeRentals = count_set.getInt(1);
     	
     	//retrieve max allowed rentals for indicated plan
     	_rentals_for_plan_statement.clearParameters();
     	_rentals_for_plan_statement.setInt(1, pid);
     	ResultSet maxRental_set = _rentals_for_plan_statement.executeQuery();
+    	maxRental_set.next();
     	int maxRentals = maxRental_set.getInt(1);
     	
     	//compare active rentals with allowed rentals
@@ -405,10 +408,12 @@ public class Query {
 	_update_rental_plan_statement.clearParameters();
 	_update_rental_plan_statement.setInt(1, pid);
 	_update_rental_plan_statement.setInt(2, cid);
-	_update_rental_plan_statement.executeQuery();
+	_update_rental_plan_statement.executeUpdate();
+	_commit_transaction_statement.executeUpdate();
     }
     else{
-    	System.out.println("Plan not changed! You have " + activeRentals + " active rentals. " +
+    	_rollback_transaction_statement.executeUpdate();
+    	System.err.println("Plan not changed! You have " + activeRentals + " active rentals. " +
     			"The new plan allows for " + maxRentals + " active rentals. " +
     					"Please return some rentals first.");
     }

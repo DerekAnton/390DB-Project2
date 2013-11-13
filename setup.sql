@@ -168,3 +168,6 @@ VALUES    (1, 2, current_timestamp - interval '2 day'),
 
 DELETE FROM activerental
 WHERE cust_id = 4;
+
+--ensure transactions are synchronized
+SET default_transaction_isolation TO serializable;

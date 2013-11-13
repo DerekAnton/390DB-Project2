@@ -60,7 +60,7 @@ public class Query {
 
     private String _update_rental_plan_sql = "UPDATE customer "
 	    + "SET plan_id = ? " + "WHERE cust_id = ?";
-    private PreparedStatement _update_rental_plan_statement;
+    private PreparedStatement _update_rental_plan_statement;   
 
     private String _rent_mid_to_cid_sql = "INSERT INTO activerental (movie_id, cust_id, dateout) VALUES (?, ?, current_timestamp)";
     private PreparedStatement _rent_mid_to_cid_statement;
@@ -201,7 +201,11 @@ public class Query {
 
 	_remaining_rental_statement.clearParameters();
 	_remaining_rental_statement.setInt(1, cid);
+    _remaining_rental_statement.setInt(2, cid);
+
 	ResultSet remainingNum = _remaining_rental_statement.executeQuery();
+    remainingNum.next();
+
 	return remainingNum.getInt(1);
     }
 
@@ -216,6 +220,7 @@ public class Query {
 	_customer_name_statement.clearParameters();
 	_customer_name_statement.setInt(1, cid);
 	ResultSet name_set = _customer_name_statement.executeQuery();
+    name_set.next();
 	String name = name_set.getString(2) + " " + name_set.getString(1);
 	return name;
     }

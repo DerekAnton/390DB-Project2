@@ -26,7 +26,7 @@ public class Query {
 	private Connection _customer_db;
 
 	// Canned queries
-	private String _search_sql = "SELECT * FROM movie WHERE name LIKE '%?%' ORDER BY id";
+	private String _search_sql = "SELECT * FROM movie WHERE name LIKE ? ORDER BY id";
 	private PreparedStatement _search_statement;
 
 	private String _director_mid_sql = "SELECT d.* "
@@ -79,11 +79,11 @@ public class Query {
 	private PreparedStatement _return_by_mid_statement;
 
 	private String _movie_join_dir_sql = "SELECT m.id, d.fname, d.lname FROM movie m INNER JOIN movie_directors md "
-			+ "ON m.id=md.mid INNER JOIN directors d ON md.did=d.id WHERE NAME LIKE '%?%' ORDER BY m.id";
+			+ "ON m.id=md.mid INNER JOIN directors d ON md.did=d.id WHERE name LIKE ? ORDER BY m.id";
 	private PreparedStatement _movie_join_dir_statement;
 
 	private String _movie_join_actor_sql = "SELECT m.id, a.fname, a.lname FROM movie m INNER JOIN casts c "
-			+ "ON m.id=c.mid INNER JOIN actor a on a.id=c.pid WHERE name LIKE '%?%' ORDER BY m.id";
+			+ "ON m.id=c.mid INNER JOIN actor a on a.id=c.pid WHERE name LIKE ? ORDER BY m.id";
 	private PreparedStatement _movie_join_actor_statement;
 
 	private String _customer_login_sql = "SELECT * FROM customer WHERE username = ? and password = ?";
@@ -347,7 +347,7 @@ public class Query {
 	public void transaction_search(int cid, String movie_title)
 			throws Exception {
 		_search_statement.clearParameters();
-		_search_statement.setString(1, movie_title);
+		_search_statement.setString(1, "%" + movie_title + "%");
 		ResultSet movie_set = null;
 		StringBuilder sb = new StringBuilder();
 		try {
@@ -574,7 +574,7 @@ public class Query {
 		ResultSet qResults = null;
 		String id;
 		_search_statement.clearParameters();
-		_search_statement.setString(1, movie_title);
+		_search_statement.setString(1, "%" + movie_title + "%");
 		while ((qResults == null ? (qResults = _search_statement
 				.executeQuery()) : qResults).next()) {
 			current = new StringBuilder();
@@ -585,7 +585,7 @@ public class Query {
 		}
 
 		_movie_join_dir_statement.clearParameters();
-		_movie_join_dir_statement.setString(1, movie_title);
+		_movie_join_dir_statement.setString(1, "%" + movie_title + "%");
 		qResults.close();
 		qResults = null;
 		while ((qResults == null ? (qResults = _movie_join_dir_statement
@@ -596,7 +596,7 @@ public class Query {
 		}
 
 		_movie_join_actor_statement.clearParameters();
-		_movie_join_actor_statement.setString(1, movie_title);
+		_movie_join_actor_statement.setString(1, "%" + movie_title + "%");
 		qResults.close();
 		qResults = null;
 		while ((qResults == null ? (qResults = _movie_join_actor_statement

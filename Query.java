@@ -54,20 +54,20 @@ public class Query {
 
     private String _rental_plans_sql = "SELECT * " + "FROM rentalplan";
     private PreparedStatement _rental_plans_statement;
-    
+
     private String _rentals_for_plan_sql = "SELECT maxrentals FROM rentalplan WHERE plan_id = ?";
     private PreparedStatement _rentals_for_plan_statement;
 
     private String _update_rental_plan_sql = "UPDATE customer "
 	    + "SET plan_id = ? " + "WHERE cust_id = ?";
-    private PreparedStatement _update_rental_plan_statement;   
+    private PreparedStatement _update_rental_plan_statement;
 
     private String _rent_mid_to_cid_sql = "INSERT INTO activerental (movie_id, cust_id, dateout) VALUES (?, ?, current_timestamp)";
     private PreparedStatement _rent_mid_to_cid_statement;
 
     private String _activerentals_by_cid_sql = "SELECT * FROM activerental WHERE cust_id = ?";
     private PreparedStatement _activerentals_by_cid_statement;
-    
+
     private String _activerentals_count_sql = "SELECT count(*) FROM activerental WHERE cust_id = ?";
     private PreparedStatement _activerentals_count_statement;
 
@@ -136,7 +136,7 @@ public class Query {
     /**
      * keep track of opens statements so we can close them before closing
      * connection
-     * 
+     *
      * @throws SQLException
      */
     private PreparedStatement openStatement(Connection conn, String sql)
@@ -164,7 +164,8 @@ public class Query {
 	_who_has_this_movie_statement = openStatement(_customer_db,
 		_who_has_this_movie_sql);
 	_rental_plans_statement = openStatement(_customer_db, _rental_plans_sql);
-	_rentals_for_plan_statement = openStatement(_customer_db, _rentals_for_plan_sql);
+	_rentals_for_plan_statement = openStatement(_customer_db,
+		_rentals_for_plan_sql);
 	_update_rental_plan_statement = openStatement(_customer_db,
 		_update_rental_plan_sql);
 	_movie_by_id_statement = openStatement(_imdb, _movie_by_id_sql);
@@ -173,7 +174,7 @@ public class Query {
 	_activerentals_by_cid_statement = openStatement(_customer_db,
 		_activerentals_by_cid_sql);
 	_activerentals_count_statement = openStatement(_customer_db,
-			_activerentals_count_sql);
+		_activerentals_count_sql);
 	_return_by_mid_statement = openStatement(_customer_db,
 		_return_by_mid_sql);
 	_customer_login_statement = openStatement(_customer_db,
@@ -192,7 +193,7 @@ public class Query {
      * how many movies can she/he still rent ? you have to compute and return
      * the difference between the customer's plan and the count of outstanding
      * rentals
-     * 
+     *
      * @param cid
      * @return
      * @throws Exception
@@ -201,17 +202,17 @@ public class Query {
 
 	_remaining_rental_statement.clearParameters();
 	_remaining_rental_statement.setInt(1, cid);
-    _remaining_rental_statement.setInt(2, cid);
+	_remaining_rental_statement.setInt(2, cid);
 
 	ResultSet remainingNum = _remaining_rental_statement.executeQuery();
-    remainingNum.next();
+	remainingNum.next();
 
 	return remainingNum.getInt(1);
     }
 
     /**
      * you find the first + last name of the current customer
-     * 
+     *
      * @param cid
      * @return
      * @throws Exception
@@ -220,14 +221,14 @@ public class Query {
 	_customer_name_statement.clearParameters();
 	_customer_name_statement.setInt(1, cid);
 	ResultSet name_set = _customer_name_statement.executeQuery();
-    name_set.next();
+	name_set.next();
 	String name = name_set.getString(2) + " " + name_set.getString(1);
 	return name;
     }
 
     /**
      * is plan_id a valid plan id ? you have to figure out
-     * 
+     *
      * @param plan_id
      * @return
      * @throws Exception
@@ -249,7 +250,7 @@ public class Query {
 
     /**
      * is mid a valid movie id ? you have to figure out
-     * 
+     *
      * @param mid
      * @return
      * @throws Exception
@@ -269,7 +270,7 @@ public class Query {
     /**
      * find the customer id (cid) of whoever currently rents the movie mid;
      * return -1 if none
-     * 
+     *
      * @param mid
      * @return
      * @throws Exception
@@ -290,7 +291,7 @@ public class Query {
      * login transaction: invoked only once, when the app is started
      * authenticates the user, and returns the user id, or -1 if authentication
      * fails
-     * 
+     *
      * @param name
      * @param password
      * @return
@@ -300,17 +301,19 @@ public class Query {
 	int cid;
 
 	_customer_login_statement.clearParameters();
-	_customer_login_statement.setString(1,name);
-	_customer_login_statement.setString(2,password);
+	_customer_login_statement.setString(1, name);
+	_customer_login_statement.setString(2, password);
 	ResultSet cid_set = _customer_login_statement.executeQuery();
-	if (cid_set.next()) cid = cid_set.getInt(1);
-	else cid = -1;
-	return(cid);
+	if (cid_set.next())
+	    cid = cid_set.getInt(1);
+	else
+	    cid = -1;
+	return (cid);
     }
 
     /**
      * println the customer's personal data: name, and plan number
-     * 
+     *
      * @param cid
      * @throws Exception
      */
@@ -328,7 +331,7 @@ public class Query {
      * LIKE movie_title prints the movies, directors, actors, and the
      * availability status: AVAILABLE, or UNAVAILABLE, or YOU CURRENTLY RENT IT
      * set the first (and single) '?' parameter
-     * 
+     *
      * @param cid
      * @param movie_title
      * @throws Exception
@@ -382,47 +385,47 @@ public class Query {
 
     /**
      * updates the customer's plan to pid: UPDATE customers SET plid = pid
-     * 
+     *
      * @param cid
      * @param pid
      * @throws Exception
      */
     public void transaction_choose_plan(int cid, int pid) throws Exception {
-    	_begin_transaction_read_write_statement.executeUpdate();
-    	//retrieve the number of active rentals for that user
-    	_activerentals_count_statement.clearParameters();
-    	_activerentals_count_statement.setInt(1, cid);
-    	ResultSet count_set = _activerentals_count_statement.executeQuery();
-    	count_set.next();
-    	int activeRentals = count_set.getInt(1);
-    	
-    	//retrieve max allowed rentals for indicated plan
-    	_rentals_for_plan_statement.clearParameters();
-    	_rentals_for_plan_statement.setInt(1, pid);
-    	ResultSet maxRental_set = _rentals_for_plan_statement.executeQuery();
-    	maxRental_set.next();
-    	int maxRentals = maxRental_set.getInt(1);
-    	
-    	//compare active rentals with allowed rentals
-    if(activeRentals <= maxRentals){
-	_update_rental_plan_statement.clearParameters();
-	_update_rental_plan_statement.setInt(1, pid);
-	_update_rental_plan_statement.setInt(2, cid);
-	_update_rental_plan_statement.executeUpdate();
-	_commit_transaction_statement.executeUpdate();
-    }
-    else{
-    	_rollback_transaction_statement.executeUpdate();
-    	System.err.println("Plan not changed! You have " + activeRentals + " active rentals. " +
-    			"The new plan allows for " + maxRentals + " active rentals. " +
-    					"Please return some rentals first.");
-    }
+	_begin_transaction_read_write_statement.executeUpdate();
+	// retrieve the number of active rentals for that user
+	_activerentals_count_statement.clearParameters();
+	_activerentals_count_statement.setInt(1, cid);
+	ResultSet count_set = _activerentals_count_statement.executeQuery();
+	count_set.next();
+	int activeRentals = count_set.getInt(1);
+
+	// retrieve max allowed rentals for indicated plan
+	_rentals_for_plan_statement.clearParameters();
+	_rentals_for_plan_statement.setInt(1, pid);
+	ResultSet maxRental_set = _rentals_for_plan_statement.executeQuery();
+	maxRental_set.next();
+	int maxRentals = maxRental_set.getInt(1);
+
+	// compare active rentals with allowed rentals
+	if (activeRentals <= maxRentals) {
+	    _update_rental_plan_statement.clearParameters();
+	    _update_rental_plan_statement.setInt(1, pid);
+	    _update_rental_plan_statement.setInt(2, cid);
+	    _update_rental_plan_statement.executeUpdate();
+	    _commit_transaction_statement.executeUpdate();
+	} else {
+	    _rollback_transaction_statement.executeUpdate();
+	    System.err.println("Plan not changed! You have " + activeRentals
+		    + " active rentals. " + "The new plan allows for "
+		    + maxRentals + " active rentals. "
+		    + "Please return some rentals first.");
+	}
 	/* remember to enforce consistency ! */
     }
 
     /**
      * println all available plans: SELECT * FROM plan
-     * 
+     *
      * @throws Exception
      */
     public void transaction_list_plans() throws Exception {
@@ -439,7 +442,7 @@ public class Query {
 
     /**
      * println all movies rented by the current user
-     * 
+     *
      * @param cid
      * @throws Exception
      */
@@ -477,7 +480,7 @@ public class Query {
 
     /**
      * rent the movie mid to the customer cid remember to enforce consistency !
-     * 
+     *
      * @param cid
      * @param mid
      * @throws Exception
@@ -506,7 +509,7 @@ public class Query {
 
     /**
      * return the movie mid by the customer cid
-     * 
+     *
      * @param cid
      * @param mid
      * @throws Exception
@@ -536,7 +539,7 @@ public class Query {
      * Needs to run three SQL queries: (a) movies, (b) movies join directors,
      * (c) movies join actors Answers are sorted by mid. Then merge-joins the
      * three answer sets
-     * 
+     *
      * @param cid
      * @param movie_title
      * @throws Exception
@@ -544,59 +547,50 @@ public class Query {
     public void transaction_fast_search(int cid, String movie_title)
 	    throws Exception {
 	HashMap<String, StringBuilder> results = new HashMap<String, StringBuilder>();
-	//cid is not required as a parameter.
-	//fast search is not required to return rental status
+	// cid is not required as a parameter.
+	// fast search is not required to return rental status
 	StringBuilder current;
 	ResultSet qResults = null;
 	String id;
 	while ((qResults == null ? (qResults = this._imdb.createStatement()
 		.executeQuery(
-			"SELECT * " + 
-			"FROM MOVIE " + 
-			"WHERE NAME LIKE '%" + movie_title + "%' " + 
-			"ORDER BY id;"))
+			"SELECT * " + "FROM MOVIE " + "WHERE NAME LIKE '%"
+				+ movie_title + "%' " + "ORDER BY id;"))
 		: qResults).next()) {
 	    current = new StringBuilder();
 
 	    id = qResults.getString("id");
-	    current.append(
-	    	"ID : " + id + 
-	    	"\nName : " + qResults.getString("name") + 
-	    	"\nYear : " + qResults.getString("year") + "\n");
+	    current.append("ID : " + id + "\nName : "
+		    + qResults.getString("name") + "\nYear : "
+		    + qResults.getString("year") + "\n");
 	    results.put(id, current);
 	}
 	qResults = null;
 
 	while ((qResults == null ? (qResults = this._imdb.createStatement()
 		.executeQuery(
-			"SELECT m.id, d.fname, d.lname " + 
-			"FROM MOVIE m " +
-			"INNER JOIN MOVIE_DIRECTORS md ON m.id=mid " +
-			"INNER JOIN DIRECTORS d ON md.did=d.id " +
-			"WHERE NAME LIKE '%" + movie_title + "%' " +
-			"ORDER BY m.id;"))
-		: qResults).next()) {
+			"SELECT m.id, d.fname, d.lname " + "FROM MOVIE m "
+				+ "INNER JOIN MOVIE_DIRECTORS md ON m.id=mid "
+				+ "INNER JOIN DIRECTORS d ON md.did=d.id "
+				+ "WHERE NAME LIKE '%" + movie_title + "%' "
+				+ "ORDER BY m.id;")) : qResults).next()) {
 
 	    current = results.get(qResults.getString("id"));
-	    current.append(
-	    	"Director : " + qResults.getString("fname") + ' '
-		    	      + qResults.getString("lname") + "\n");
+	    current.append("Director : " + qResults.getString("fname") + ' '
+		    + qResults.getString("lname") + "\n");
 	}
 	qResults = null;
 
 	while ((qResults == null ? (qResults = this._imdb.createStatement()
 		.executeQuery(
-			"SELECT m.id, a.fname, a.lname " + 
-			"FROM MOVIE m " +
-			"INNER JOIN CASTS c ON m.id=c.mid " +
-			"INNER JOIN ACTOR a on a.id=c.pid " +
-			"WHERE NAME LIKE '%" + movie_title + "%' " +
-			"ORDER BY m.id;")) 
-		: qResults).next()) {
+			"SELECT m.id, a.fname, a.lname " + "FROM MOVIE m "
+				+ "INNER JOIN CASTS c ON m.id=c.mid "
+				+ "INNER JOIN ACTOR a on a.id=c.pid "
+				+ "WHERE NAME LIKE '%" + movie_title + "%' "
+				+ "ORDER BY m.id;")) : qResults).next()) {
 	    current = results.get(qResults.getString("id"));
-	    current.append(
-	    	"Actor : " + qResults.getString("fname") + " "
-		    	   + qResults.getString("lname") + "\n");
+	    current.append("Actor : " + qResults.getString("fname") + " "
+		    + qResults.getString("lname") + "\n");
 	}
 	qResults = null;
 	for (StringBuilder sb : results.values())
